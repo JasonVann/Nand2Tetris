@@ -15,4 +15,8 @@ CHIP Mux {
 
     PARTS:
     // Put your code here:
+    And(a=sel,b=b,out=b1); // holds value of b if sel=1
+    Not(in=sel,out=notsel);
+    And(a=notsel,b=a,out=a1); // holds value of a if sel=0
+    Or(a=b1,b=a1,out=out);
 }
