@@ -14,7 +14,13 @@ CHIP FullAdder {
 
     PARTS:
     // Put you code here:
+    /* 3 HA versions
     HalfAdder(a=a, b=b, sum=temp, carry=carry1);
     HalfAdder(a=temp, b=c, sum=sum, carry=carry2);
     HalfAdder(a=carry1, b=carry2, sum=carry, carry=carry3);
+    */
+
+    HalfAdder(a=a, b=b, sum=temp, carry=carry1);
+    HalfAdder(a=temp, b=c, sum=sum, carry=carry2);
+    Mux(a=carry1, b=carry2, sel=carry2, out=carry);
 }
