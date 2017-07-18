@@ -14,4 +14,8 @@ CHIP Inc16 {
 
     PARTS:
    // Put you code here:
+   Not16(in=in, out=na);
+   
+   Add16(a=na, b=true, out=temp);
+   Not16(in=temp, out=out);
 }
