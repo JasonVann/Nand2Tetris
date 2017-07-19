@@ -1,0 +1,50 @@
+/*
+4-bit Carry Look Ahead adder
+*/
+
+CHIP CarryLookAhead4{
+     IN
+        x[4],
+        y[4],
+        c; //carryin
+
+     OUT
+        sum[4],
+        PG,
+        GG,
+        c4;
+
+    PARTS:
+    FullAdder(a=x[0],b=y[0],c=c, sum=sum[0],carry=c1);
+    And(a=x[0], b=y[0], out=g0);
+    Or(a=x[0], b=y[0], out=p0);
+
+    FullAdder(a=x[1],b=y[1],c=c1, sum=sum[1],carry=c2);
+    And(a=x[1], b=y[1], out=g1);
+    Or(a=x[1], b=y[1], out=p1);
+
+    FullAdder(a=x[2],b=y[2],c=c2, sum=sum[2],carry=c3);
+    And(a=x[2], b=y[2], out=g2);
+    Or(a=x[2], b=y[2], out=p2);
+
+    FullAdder(a=x[3],b=y[3],c=c3, sum=sum[3],carry=c4);
+    And(a=x[3], b=y[3], out=g3);
+    Or(a=x[3], b=y[3], out=p3);
+
+    And(a=p0, b=p1, out=p01);
+    And(a=p2, b=p3, out=p23);
+    And(a=p01, b=p23, out=PG);
+
+    And(a=g2, b=p3, out=g2p3);
+    And(a=g1, b=p3, out=g1p3);
+    And(a=g1p3, b=p2, out=g1p3p2);
+    And(a=g0, b=p3, out=g0p3);
+    And(a=p2, b=p1, out=p2p1);
+    And(a=g0p3, b=p2p1, out=g0p3p2p1);
+
+    Or(a=g3, b=g2p3, out=gg1);
+    Or(a=g1p3p2, b=g0p3p2p1, out=gg2);
+    Or(a=gg1, b=gg2, out=GG);
+}
+    
+        

@@ -1,0 +1,24 @@
+/*
+16-bit Carry Look Ahead adder
+*/
+
+CHIP CarryLookAhead16{
+     IN
+        a[16],
+        b[16];
+
+     OUT
+        out[16];
+
+     PARTS:
+     CarryLookAhead4(x=a[0..3], y=b[0..3], c=false, sum=out[0..3], PG=pg1, GG=gg1, c4=c1);
+
+     CarryLookAhead4(x=a[4..7], y=b[4..7], c=c1, sum=out[4..7], PG=pg2, GG=gg2, c4=c2);
+
+     CarryLookAhead4(x=a[8..11], y=b[8..11], c=c2, sum=out[8..11], PG=pg3, GG=gg3, c4=c3);
+
+     CarryLookAhead4(x=a[12..15], y=b[12..15], c=c3, sum=out[12..15], PG=pg4, GG=gg4, c4=cout);
+
+}
+     
+        
