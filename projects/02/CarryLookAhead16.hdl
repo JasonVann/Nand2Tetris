@@ -10,6 +10,8 @@ CHIP CarryLookAhead16{
      OUT
         out[16];
 
+     // To be consistent with the course's CHIP API, we ignore the final GG and PG
+     
      PARTS:
      CarryLookAhead4(x=a[0..3], y=b[0..3], c=false, sum=out[0..3], PG=pg1, GG=gg1, c4=c1);
 
