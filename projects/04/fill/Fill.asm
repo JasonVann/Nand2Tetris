@@ -22,10 +22,10 @@
 
 (LOOP)
 
-@SCREEN
-D = A
-@addr
-M = D // addr = 16384
+  @SCREEN
+  D = A
+  @addr
+  M = D // addr = 16384
 
   // If RAM[KBD] != 0
   @KBD // 24576
@@ -67,7 +67,7 @@ M = D // addr = 16384
 
     @LOOP
     D; JEQ    // back to beginning if fully drawn
-    
+
   (WHITE)
       @addr
       A = M
