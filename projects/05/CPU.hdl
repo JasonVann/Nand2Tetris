@@ -6,23 +6,23 @@
 /**
  * The Hack CPU (Central Processing unit), consisting of an ALU,
  * two registers named A and D, and a program counter named PC.
- * The CPU is designed to fetch and execute instructions written in 
+ * The CPU is designed to fetch and execute instructions written in
  * the Hack machine language. In particular, functions as follows:
- * Executes the inputted instruction according to the Hack machine 
+ * Executes the inputted instruction according to the Hack machine
  * language specification. The D and A in the language specification
  * refer to CPU-resident registers, while M refers to the external
- * memory location addressed by A, i.e. to Memory[A]. The inM input 
- * holds the value of this location. If the current instruction needs 
- * to write a value to M, the value is placed in outM, the address 
- * of the target location is placed in the addressM output, and the 
- * writeM control bit is asserted. (When writeM==0, any value may 
- * appear in outM). The outM and writeM outputs are combinational: 
- * they are affected instantaneously by the execution of the current 
- * instruction. The addressM and pc outputs are clocked: although they 
- * are affected by the execution of the current instruction, they commit 
- * to their new values only in the next time step. If reset==1 then the 
- * CPU jumps to address 0 (i.e. pc is set to 0 in next time step) rather 
- * than to the address resulting from executing the current instruction. 
+ * memory location addressed by A, i.e. to Memory[A]. The inM input
+ * holds the value of this location. If the current instruction needs
+ * to write a value to M, the value is placed in outM, the address
+ * of the target location is placed in the addressM output, and the
+ * writeM control bit is asserted. (When writeM==0, any value may
+ * appear in outM). The outM and writeM outputs are combinational:
+ * they are affected instantaneously by the execution of the current
+ * instruction. The addressM and pc outputs are clocked: although they
+ * are affected by the execution of the current instruction, they commit
+ * to their new values only in the next time step. If reset==1 then the
+ * CPU jumps to address 0 (i.e. pc is set to 0 in next time step) rather
+ * than to the address resulting from executing the current instruction.
  */
 
 CHIP CPU {
@@ -34,10 +34,53 @@ CHIP CPU {
                          // the current program (reset==0).
 
     OUT outM[16],        // M value output
-        writeM,          // Write to M? 
+        writeM,          // Write to M?
         addressM[15],    // Address in data memory (of M)
         pc[15];          // address of next instruction
 
     PARTS:
     // Put your code here:
+    Mux16(a=instruction, b=lastOutM, sel=instruction[15], out=toA);
+    ARegister(in=toA, load=writeA, out=outA, out[0..14]=addressM);
+
+    DRegister(in=outALU, load=writeD, out=outD, out=lastOutD);
+
+    Mux16(a=outA, b=inM, sel=instruction[12], out=yALU);
+
+    ALU(x=lastOutD, y=yALU, out=outALU, out=outM, out=lastOutM, zx=instruction[11],nx=instruction[10],zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], zr=EQ,ng=LT);
+
+    DMux8Way(in=true, sel=instruction[3..5], a=NoStore, b=M, c=D, d=MD, e=A,f=AM, g=AD, h=AMD);
+
+    Not(in=instruction[15], out=AType);
+
+    And(a=instruction[3], b=instruction[15], out=writeM);
+    And(a=instruction[4], b=instruction[15], out=writeD);
+    Or(a=instruction[5], b=AType, out=writeA);
+
+    // Then update PC
+
+    Not(in=EQ, out=NE);
+    Not(in=LT, out=GE);
+    And(a=NE, b=GE, out=GT);
+    Or(a=EQ, b=LT, out=LE);
+
+    DMux8Way(in=true, sel=instruction[0..2], a=NoJMP, b=iJGT, c=iJEQ, d=iJGE, e=iJLT,f=iJNE, g=iJLE, h=JMP);
+
+    // For the PC to jump equal(JEQ), we need C instruction say iJEQ, and the ALU out bit say EQ
+    And(a=iJEQ, b=EQ, out=JEQ);
+    And(a=iJGT, b=GT, out=JGT);
+    And(a=iJGE, b=GE, out=JGE);
+    And(a=iJLT, b=LT, out=JLT);
+    And(a=iJNE, b=NE, out=JNE);
+    And(a=iJLE, b=LE, out=JLE);
+
+    // NoJMP or JMP is executed unconditionally
+    // If any of the 7 jump conditions are true, then jump; o/w, just increment PC
+    Or8Way(in[0]=JEQ, in[1]=JGT, in[2]=JGE, in[3]=JLT, in[4]=JNE, in[5]=JLE, in[6]=JMP, in[7]=false, out=toJMP);
+
+    // Make sure it's a C type instruction
+    And(a=toJMP, b=instruction[15], out=toJMP1);
+
+    PC(in=outA, load=toJMP1, inc=true, reset=reset, out[0..14]=pc, out[0..14]=lastPC);
+
 }
