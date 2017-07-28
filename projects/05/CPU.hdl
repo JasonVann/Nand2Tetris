@@ -43,11 +43,11 @@ CHIP CPU {
     Mux16(a=instruction, b=lastOutM, sel=instruction[15], out=toA);
     ARegister(in=toA, load=writeA, out=outA, out[0..14]=addressM);
 
-    DRegister(in=outALU, load=writeD, out=outD, out=lastOutD);
+    DRegister(in=outALU, load=writeD, out=outD);
 
     Mux16(a=outA, b=inM, sel=instruction[12], out=yALU);
 
-    ALU(x=lastOutD, y=yALU, out=outALU, out=outM, out=lastOutM, zx=instruction[11],nx=instruction[10],zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], zr=EQ,ng=LT);
+    ALU(x=outD, y=yALU, out=outALU, out=outM, out=lastOutM, zx=instruction[11],nx=instruction[10],zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], zr=EQ,ng=LT);
 
     DMux8Way(in=true, sel=instruction[3..5], a=NoStore, b=M, c=D, d=MD, e=A,f=AM, g=AD, h=AMD);
 
@@ -81,6 +81,6 @@ CHIP CPU {
     // Make sure it's a C type instruction
     And(a=toJMP, b=instruction[15], out=toJMP1);
 
-    PC(in=outA, load=toJMP1, inc=true, reset=reset, out[0..14]=pc, out[0..14]=lastPC);
+    PC(in=outA, load=toJMP1, inc=true, reset=reset, out[0..14]=pc);
 
 }
