@@ -1,6 +1,7 @@
 # For NAND2Tetris, proj 6
+import os
 
-class Assembler():
+class AssemblerS():
     '''
     Assemble the given assembly program to the Hack machine language,
     output file has the same file name as the input but with '.hack' suffix
@@ -12,11 +13,32 @@ class Assembler():
         if in_filename[-4:] != '.asm':
             raise 'The input file must be a .asm code file'
         self.infn = in_filename
+        self.lsfn = in_filename[:-4] + '_L.asm' # no symbol version
         self.outfn = in_filename[:-4] + '.hack'
-        self.symbol_table = {}
+        self.symbol_table = self.build_symbol_table()
         self.jmp_lookup = self.build_jmp_lookup()
         self.comp_lookup = self.build_comp_lookup()
         self.dest_lookup = self.build_dest_lookup()
+        self.ln = -1 # line number of the code in the .hack file, 1st ln is 0
+        self.var_addr = 16 # current address of the variable in the RAM
+
+    def build_symbol_table(self):
+        '''
+        Add the predefined symbols to the lookup table
+        '''
+        symbol_table = {}
+        symbol_table['SP'] = 0
+        symbol_table['LCL'] = 1
+        symbol_table['ARG'] = 2
+        symbol_table['THIS'] = 3
+        symbol_table['THAT'] = 4
+        for i in range(16):
+            symbol_table['R'+str(i)] = i
+
+        symbol_table['SCREEN'] = 16384
+        symbol_table['KBD'] = 24576
+
+        return symbol_table
 
     def build_jmp_lookup(self):
         '''
@@ -85,49 +107,103 @@ class Assembler():
 
         return comp_lookup
 
-    #def read(self, file_name):
-
     def parse(self):
+        '''
+        Parse the .asm and assemble to .hack
+        '''
+
+        def parse1():
+            #First pass of parsing: only process the symbol table
+            fo = open(self.lsfn, 'w')
+            with open(self.infn, 'r') as f:
+                lines = f.readlines()
+                for line in lines:
+                    # Remove comment
+                    pos = line.find('//')
+                    code = line[:pos]
+                    code = code.lstrip()  # remove leading blanks
+                    #print(85, line, pos, line[:pos], code)
+                    # Remove spaces between characters: ' D M = A '
+                    code = [char for char in code if char != ' ']
+                    code = ''.join(code)
+                    if code == '@math.1':
+                        a = 1
+                    if len(code) == 0:
+                        # comment or blank line
+                        continue
+
+                    elif code[0] == '(':
+                        self.process_label(code)
+                        # Don't write label to the file
+                        continue
+                    else:
+                        # Only count non-blank, non-label lines
+                        self.ln += 1
+                    fo.write(code + os.linesep)
+            fo.close()
+
+        parse1()
         fo = open(self.outfn, 'w')
 
-        with open(self.infn, 'r') as f:
+        #print(self.symbol_table['math.1'])
+        #print(139, self.symbol_table)
+
+        with open(self.lsfn, 'r') as f:
             lines = f.readlines()
-            for line in lines:
-                # Remove comment
-                pos = line.find('//')
-                code = line[:pos]
-                code = code.lstrip()  # remove leading blanks
-                #print(85, line, pos, line[:pos], code)
-                # Remove spaces between characters: ' D M = A '
-                code = [char for char in code if char != ' ']
-                code = ''.join(code)
-                if len(code) == 0:
-                    # comment or blank line
-                    continue
+            for code in lines:
+
+                code = code.rstrip()
                 if code[0] == '@':
                     ml = self.process_A(code)
                 else:
                     ml = self.process_C(code)
-                print(95, code, ml)
+                #print(95, code, ml)
                 fo.write(ml+'\n')
 
         fo.close()
+
+    def process_label(self, code):
+        '''
+        Add label such as (END) to the symbol table
+        '''
+        idx1 = code.find('(')
+        idx2 = code.find(')')
+        if idx2 is None or idx1 > idx2:
+            raise 'Invalid label format'
+        label = code[idx1+1:idx2]
+        if label in self.symbol_table:
+            raise 'Duplicate label definitions found!'
+
+        self.symbol_table[label] = self.ln + 1 # use the next line's ln
 
     def process_A(self, code):
         '''
         Process A-type instruction
         eg. @2 or @R2
         '''
-        if '@R' not in code:
+        if '@R' in code:
+            # Then it's a predefined symbol
             dec = code[1:]
+            var = self.symbol_table[dec]
         else:
-            dec = code[2:]
+            dec = code[1:]
+            if dec in self.symbol_table:
+                # It's a label or variable that has been defined
+                var = self.symbol_table[dec]
+            elif str.isnumeric(dec):
+                # eg: @100
+                var = dec
+            else:
+                # It's a new variable
+                self.symbol_table[dec] = self.var_addr
+                var = self.var_addr
+                self.var_addr += 1
         try:
-            binary = bin(int(dec))
+            binary = bin(int(var))
             # eg. '0b101'
         except:
             raise 'A-type instruction not in a valid format: contains ' + \
-                'non-number characters: {}'.format(dec)
+                'non-number characters: {}'.format(var)
 
         binary = binary[2:]
         ml = '0' + '0' * (15 - len(binary)) + binary
@@ -144,7 +220,10 @@ class Assembler():
             '''
             idx1 = code.find('=')
             idx2 = code.find(';')
-            if idx2 == -1:
+            if idx1 == -1 and idx2 == -1:
+                # No comp field
+                return '0' + self.comp_lookup['0']
+            elif idx2 == -1:
                 comp_field = code[idx1+1:]
             else:
                 comp_field = code[idx1+1:idx2]
@@ -204,11 +283,13 @@ class Assembler():
         return out
 
 def test(fn):
-    assembler = Assembler(fn)
+    assembler = AssemblerS(fn)
     assembler.parse()
 
 #test('add/Add.asm')
 #test('max/MaxL.asm')
 #test('max/Max.asm')
 #test('rect/RectL.asm')
-test('pong/PongL.asm')
+#test('rect/Rect.asm')
+#test('pong/PongL.asm')
+test('pong/Pong.asm')
